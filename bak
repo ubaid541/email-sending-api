@@ -1,0 +1,61 @@
+const express = require("express");
+const bodyParser = require("body-parser");
+const nodemailer = require("nodemailer");
+require("dotenv").config();
+
+const app = express();
+app.use(bodyParser.json());
+
+// Configure your email service provider's SMTP settings
+const transporter = nodemailer.createTransport({
+  // service: "gmail",
+  host: "mail.hikalagency.ae",
+  port: 465,
+  secure: true,
+  auth: {
+    user: "ubaid.rehman@hikalagency.ae", // Replace with your Gmail email
+    pass: "ubaid@2704", // Replace with your Gmail password or app-specific password
+  },
+});
+app.post("/send-emails", async (req, res) => {
+  console.log("red body:: ", req.body);
+  try {
+    const { candidates, subject, body } = req.body;
+
+    if (!candidates || !subject || !body) {
+      return res.status(400).json({ error: "Missing required data." });
+    }
+
+    const emailPromises = candidates?.map(async (candidate) => {
+      const recipientEmail = candidate;
+      console.log("Recipient Email:", recipientEmail);
+
+      const data = {
+        from: '"Hikal Agency" <your-email@gmail.com>', // Replace with your Gmail email
+        to: recipientEmail,
+        subject,
+        text: body,
+      };
+
+      try {
+        const result = await transporter.sendMail(data);
+        console.log("Email sent:", result);
+        return { candidateEmail: recipientEmail, success: true };
+      } catch (error) {
+        console.error("Error sending email:", error);
+        return { candidateEmail: recipientEmail, success: false };
+      }
+    });
+
+    const results = await Promise.all(emailPromises);
+    res.json(results);
+  } catch (error) {
+    console.error("Error sending emails:", error);
+    res.status(500).json({ error: "An error occurred while sending emails." });
+  }
+});
+
+const PORT = process.env.PORT || 6000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
